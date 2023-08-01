@@ -6,6 +6,7 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/filters/approximate_voxel_grid.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/surface/gp3.h>
 
 //#include <boost/thread/thread.hpp>
 #include <thread>
@@ -66,16 +67,47 @@ int main()
     ne.setRadiusSearch (0.01);
     std::cout<<"test"<<std::endl;
     ne.compute (*cloud_normals);
+
+    // normal + cloud
+
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normal(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+    pcl::concatenateFields(*cloud_filtered, *cloud_normals, *cloud_with_normal);
+
+    //create search tree
+
+    pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree2 (new pcl::search::KdTree<pcl::PointXYZRGBNormal>);
+    tree2->setInputCloud(cloud_with_normal);
+
+    //Initialize objects
+    pcl::GreedyProjectionTriangulation<pcl::PointXYZRGBNormal> gp3;
+    pcl::PolygonMesh triangles;
+    
+    //https://pointclouds.org/documentation/tutorials/greedy_projection.html#greedy-trianglation
+    gp3.setSearchRadius(0.025);
+    gp3.setMu (2.5);
+    gp3.setMaximumNearestNeighbors (100);
+    gp3.setMaximumSurfaceAngle(M_PI/4); // 45 degrees
+    gp3.setMinimumAngle(M_PI/18); // 10 degrees
+    gp3.setMaximumAngle(2*M_PI/3); // 120 degrees
+    gp3.setNormalConsistency(false);
+
+
+    gp3.setInputCloud (cloud_with_normal);
+    gp3.setSearchMethod (tree2);
+    gp3.reconstruct (triangles);
+
 std::cout<<"test"<<std::endl;
     pcl::visualization::PCLVisualizer viewer("PointCloudViewer");
-    viewer.addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(cloud_filtered,cloud_normals, 100, 0.05, "normals");
+
+
+    //viewer.addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(cloud_filtered,cloud_normals, 100, 0.05, "normals");
 std::cout<<"test"<<std::endl;
-    viewer.addPointCloud(cloud_filtered);
-    
+    //viewer.addPointCloud(cloud_filtered);
+    viewer.addPolygonMesh(triangles, "mesh");
     // ビューワー視聴用ループ
     while (!viewer.wasStopped())
     {
-        viewer.spinOnce();
+        viewer.spin();
         //boost::this_thread::sleep(boost::posix_time::microseconds(100000));
         std::this_thread::sleep_for(std::chrono::microseconds(100000));
         std::cout<<"test"<<std::endl;
