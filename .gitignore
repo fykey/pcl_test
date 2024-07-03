@@ -1,5 +1,7 @@
 build
 .vscode
 
-*.png
-*.pcd
+Makefile
+CMakeCache.txt
+*/CMakeCache.txt
+CMakeFiles/
